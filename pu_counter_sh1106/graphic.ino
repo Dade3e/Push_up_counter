@@ -41,6 +41,16 @@ void init_menu(int index){
     long distance = readUltrasonic();
     display.setCursor(center_text(String(distance)), 29);
     display.print(String(distance));
+    if(battery_val < 2){
+      if(lampeggio){
+          display.drawBitmap(112, 0, battery, 16, 8, SH110X_WHITE);
+          display.fillRect(126-battery_val, 1, 13, 5, SH110X_WHITE);
+      }
+      lampeggio = !lampeggio;
+    }else{
+      display.drawBitmap(112, 0, battery, 16, 8, SH110X_WHITE);
+      display.fillRect(126-battery_val, 1, 13, 5, SH110X_WHITE);
+    }
   }
   
   //chackbox
@@ -250,11 +260,23 @@ void display_show(){
   display.setTextColor(SH110X_WHITE);
   if(in_pausa){
     if(lampeggio)
-      display.drawBitmap(120, 0, PauseIcon, 8, 8, SH110X_WHITE);
-    lampeggio = !lampeggio;
+      display.drawBitmap(0, 0, PauseIcon, 8, 8, SH110X_WHITE);
   }
-    
- 
+  
+  //battery
+  
+  if(battery_val < 2){
+     if(lampeggio){
+        display.drawBitmap(112, 0, battery, 16, 8, SH110X_WHITE);
+        display.fillRect(126-battery_val, 1, 13, 5, SH110X_WHITE);
+     }
+  }else{
+    display.drawBitmap(112, 0, battery, 16, 8, SH110X_WHITE);
+    display.fillRect(126-battery_val, 1, 13, 5, SH110X_WHITE);
+  }
+  
+
+  lampeggio = !lampeggio;
 
   //numero pushups
   display.setTextSize(4);

@@ -22,7 +22,7 @@ B01100000,
 B01000000
 };
 
-//Play 8x7
+//Battery 16x7
 const uint8_t PROGMEM battery[]{
 B00011111, B11111111,
 B01110000, B00000001,

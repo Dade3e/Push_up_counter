@@ -1,19 +1,18 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
-#include <Adafruit_SH110X.h>
+#include <Adafruit_SSD1306.h>
 
 #include <EEPROM.h>
 #define EEPROM_SIZE 16
 #define ADDR_MARKER 0
-#define ADDR_BUZZER 1
 #define ADDR_MAX    2
 #define ADDR_MIN    4
 #define ADDR_PERC   6
 
 // Definizione display
 #define SCREEN_WIDTH 128
-#define SCREEN_HEIGHT 64
-Adafruit_SH1106G display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+#define SCREEN_HEIGHT 32
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 #include "./icons.h"
 
@@ -32,7 +31,7 @@ Adafruit_SH1106G display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 #define BUZZER_PIN 4
 
 #define voci_menu 3
-#define voci_config 5
+#define voci_config 4
 
 #define CHECKBAT 0
 #define BATEN 1
@@ -41,8 +40,8 @@ Adafruit_SH1106G display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 bool plotter = false;
 
-String titoli_menu[voci_menu] = {"Conta push-ups", "Impostazioni", "Debug"};
-String titoli_config[voci_config] = {"Limiti push-up", "Tolleranza misura", "Suono", "Ripristina", "Menu iniziale"};
+String titoli_menu[voci_menu] = {"Conta\npush-ups", "Impostazioni", "Debug"};
+String titoli_config[voci_config] = {"Limiti push-up", "Tolleranza misura", "Ripristina", "Menu iniziale"};
 
 unsigned long counter = 0;
 unsigned long workout_time = 0;
@@ -52,7 +51,6 @@ int debounce = 20;
 
 bool lampeggio = true;
 
-uint8_t  buzzer = 0;
 uint16_t soglia_ingresso = DEF_SOGLIA_INGRESSO;
 uint16_t soglia_min      = DEF_SOGLIA_MIN;
 uint8_t  perc            = DEF_PERC;
@@ -75,31 +73,23 @@ int j = 0;
 int media_pu = 0;
 int counter_media = 1;
 
-// Define GPIO and channel
-const int buzzerPin = 10;     // GPIO13 (can be any PWM-capable GPIO)
-const int ledcChannel = 0;    // One of 0–15
-const int resolution = 8;     // 8-bit resolution
-
 int battery_val = 0; //tensione batteria
 
 void load_config_init() {
   EEPROM.begin(EEPROM_SIZE);
   if (EEPROM.read(ADDR_MARKER) != 0x42) {
     // EEPROM vuota → scrivo valori di default
-    buzzer = false;
     soglia_ingresso = DEF_SOGLIA_INGRESSO;
     soglia_min = DEF_SOGLIA_MIN;
     perc = DEF_PERC;
 
     EEPROM.write(ADDR_MARKER, 0x42); // marker
-    EEPROM.write(ADDR_BUZZER, buzzer ? 1 : 0);
     EEPROM.put(ADDR_MAX,  (uint16_t)soglia_ingresso);
     EEPROM.put(ADDR_MIN,  (uint16_t)soglia_min);
     EEPROM.write(ADDR_PERC, (uint8_t)perc);
     EEPROM.commit();
   } else {
     // leggo i valori salvati
-    buzzer = EEPROM.read(ADDR_BUZZER);
     EEPROM.get(ADDR_MAX, soglia_ingresso);
     EEPROM.get(ADDR_MIN, soglia_min);
     perc = EEPROM.read(ADDR_PERC);
@@ -109,19 +99,16 @@ void load_config_init() {
 void load_config() {
   EEPROM.begin(EEPROM_SIZE);
   // EEPROM vuota → scrivo valori di default
-  buzzer = 0;
   soglia_ingresso = DEF_SOGLIA_INGRESSO;
   soglia_min = DEF_SOGLIA_MIN;
   perc = DEF_PERC;
 
    // scrivo in EEPROM con indirizzi coerenti
-  EEPROM.write(ADDR_BUZZER, buzzer ? 1 : 0);               // 1 byte
   EEPROM.put(ADDR_MAX, (uint16_t)soglia_ingresso);         // 2 byte
   EEPROM.put(ADDR_MIN, (uint16_t)soglia_min);              // 2 byte
   EEPROM.write(ADDR_PERC, (uint8_t)perc);                  // 1 byte
   EEPROM.commit();
   // leggo i valori salvati
-  buzzer = EEPROM.read(ADDR_BUZZER);
   EEPROM.get(ADDR_MAX, soglia_ingresso);
   EEPROM.get(ADDR_MIN, soglia_min);
   perc = EEPROM.read(ADDR_PERC);
@@ -142,17 +129,15 @@ void setup() {
 
   display.clearDisplay();
   display.setTextSize(1);
-  display.setTextColor(SH110X_WHITE);
+  display.setTextColor(SSD1306_WHITE);
 
-  // Inizializza EEPROM
-  if (!EEPROM.begin(EEPROM_SIZE)) {
-    Serial.println("Errore inizializzazione EEPROM");
-    while (1);
+   // Inizializza display
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // indirizzo tipico 0x3C
+    Serial.println("SSD1306 non trovato!");
+    while (true);
   }
 
   load_config_init();
-  Serial.print("Buzzer: ");
-  Serial.print(buzzer);
   Serial.print(", soglia ingresso: ");
   Serial.print(soglia_ingresso);
   Serial.print(", soglia min: ");
@@ -189,8 +174,6 @@ void setup() {
   battery_val = (sensorValue-2950) /60; //da 1 a 10
 
   battery_timer = millis();
-
-  ledcAttach(BUZZER_PIN, 2000, 8);    // Pin → canale 0
 
 }
 
@@ -238,18 +221,10 @@ void analisi_piegamento(int distance){
       }
       else if(distance > 0 && distance <= tmp_soglia_min && stato_pushup == 1){
         stato_pushup = 2;
-        if(buzzer){
-          ledcWriteTone(BUZZER_PIN, 3000); // Start the tone
-          timer = millis();
-        }
           
       }
       else if(distance > tmp_soglia_ingresso && stato_pushup == 2){
         stato_pushup = 3;
-        if(buzzer){
-          ledcWriteTone(BUZZER_PIN, 3500); // Start the tone
-          timer = millis();
-        }
       }
       
       if(! plotter) Serial.print("; Stato pushup: ");
@@ -280,11 +255,6 @@ long readUltrasonic() {
 void workout(int distance){
   if(! in_pausa)
     analisi_piegamento(distance);
-    if(millis() - timer > 30 ){
-      timer = millis();
-      ledcWriteTone(BUZZER_PIN, 0); // Stop the buzzer
-    }
-    //delay(10); // Wait for the specified duration
   
   if(state_machine_pu == 0){
     if(counter == 1 && start == 0){  //primo piegamento eseguito
@@ -494,11 +464,11 @@ void loop() {
       Serial.print(" counter: ");
       Serial.println(counter_media);
       counter_media += 1;
-      if(millis() - old_millis > 300 ){
+      if(millis() - old_millis > 200 ){
         old_millis = millis();
         push_up_limit(pu_index, 5 - ((millis() - timer)/1000) );
       }
-      if(5 - ((millis() - timer)/1000) == 0){
+      if( ((millis() - timer)) > 5000){   //5 sec
         pu_index += 1;
         old_millis = 0;
       }
@@ -540,11 +510,11 @@ void loop() {
       Serial.print(" counter: ");
       Serial.println(counter_media);
       counter_media += 1;
-      if(millis() - old_millis > 300 ){
+      if(millis() - old_millis > 200 ){
         old_millis = millis();
         push_up_limit(pu_index, 5 - ((millis() - timer)/1000) );
       }
-      if(5 - ((millis() - timer)/1000) == 0){
+      if( ((millis() - timer)) > 5000){   //5 sec
         pu_index += 1;
       }
       delay(100);
@@ -634,20 +604,12 @@ void loop() {
     }
   
   }
-  else if(state_machine == voci_menu+2){  //stato config 2 -> suono
-  buzzer = !buzzer;
-    EEPROM.write(ADDR_BUZZER, buzzer ? 1 : 0);
-    EEPROM.commit();
-    
-    state_machine = 1;
-    j = 2;
-  }
-  else if(state_machine ==  voci_menu+3){  //stato config 3 -> Ripristina
+  else if(state_machine ==  voci_menu+2){  //stato config 2 -> Ripristina
     load_config();
     state_machine = 1;
     j = 0;
   }
-  else if(state_machine ==  voci_menu+4){  //stato config 4 -> undu
+  else if(state_machine ==  voci_menu+3){  //stato config 3 -> undu
     state_machine = -1;
     j = 0;
   }

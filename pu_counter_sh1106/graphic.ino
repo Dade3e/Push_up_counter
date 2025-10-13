@@ -44,12 +44,12 @@ void init_menu(int index){
     if(battery_val < 2){
       if(lampeggio){
           display.drawBitmap(112, 0, battery, 16, 8, SH110X_WHITE);
-          display.fillRect(126-battery_val, 1, 13, 5, SH110X_WHITE);
+          display.fillRect(127-battery_val, 1, battery_val, 5, SH110X_WHITE);
       }
       lampeggio = !lampeggio;
     }else{
       display.drawBitmap(112, 0, battery, 16, 8, SH110X_WHITE);
-      display.fillRect(126-battery_val, 1, 13, 5, SH110X_WHITE);
+      display.fillRect(127-battery_val, 1, battery_val, 5, SH110X_WHITE);
     }
   }
   
@@ -264,15 +264,14 @@ void display_show(){
   }
   
   //battery
-  
   if(battery_val < 2){
      if(lampeggio){
         display.drawBitmap(112, 0, battery, 16, 8, SH110X_WHITE);
-        display.fillRect(126-battery_val, 1, 13, 5, SH110X_WHITE);
+        display.fillRect(127-battery_val, 1, battery_val, 5, SH110X_WHITE);
      }
   }else{
     display.drawBitmap(112, 0, battery, 16, 8, SH110X_WHITE);
-    display.fillRect(126-battery_val, 1, 13, 5, SH110X_WHITE);
+    display.fillRect(127-battery_val, 1, battery_val, 5, SH110X_WHITE);
   }
   
 

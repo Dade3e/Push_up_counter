@@ -375,7 +375,7 @@ void workout(int distance){
 
 void loop() {
 
-  if(millis() - battery_timer > 600){
+  if(millis() - battery_timer > 60000){
     battery_timer = millis();
     BAT1;
     delay(10);

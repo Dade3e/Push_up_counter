@@ -113,17 +113,55 @@ void config_menu(int index){
   else if(index == 1){
     display.setTextSize(2);
     String tmp = String(perc) + "%";
-    display.setCursor(center_text(tmp), 14);
+    display.setCursor(center_text(tmp), 16);
     display.print(tmp);
   }
   else if(index == 2){
     display.setTextSize(1);
-    display.setCursor(center_text("le impostazioni"), 11);
-    display.print("le impostazioni");
-    display.setCursor(center_text("di default"), 22);
-    display.print("di default");
+    if(modalita == 0){
+      display.setCursor(56, 14);
+      String tmp_p= String(soglia_ingresso);
+      display.print(tmp_p);
+      display.setCursor(56, 24);
+      tmp_p= String(soglia_min);
+      display.print(tmp_p);
+      if(lampeggio){
+        display.drawBitmap(80, 20, pu_up_s, 32, 10, SSD1306_WHITE);
+        //display.drawFastHLine(20, 12, 40, SSD1306_WHITE);
+      }else{
+        display.drawBitmap(80, 20, pu_down_s, 32, 10, SSD1306_WHITE);
+        //display.drawFastHLine(20, 22, 40, SSD1306_WHITE);
+      }
+      lampeggio = !lampeggio;
+      display.setCursor(8, 12);
+      display.print("Alto");
+      display.setCursor(0, 24);
+      display.print("e basso");
+    }
+    else if(modalita == 1) {
+      display.setCursor(56, 24);
+      String tmp_p= String(soglia_min);
+      display.print(tmp_p);
+      if(lampeggio){
+        display.drawBitmap(80, 20, pu_up_s, 32, 10, SSD1306_WHITE);
+      }else{
+        display.drawBitmap(80, 20, pu_down_s, 32, 10, SSD1306_WHITE);
+      }
+      lampeggio = !lampeggio;
+      display.setCursor(0, 12);
+      display.print("Solo");
+      display.setCursor(0, 24);
+      display.print("basso");
+    }
   }
   else if(index == 3){
+    display.setTextSize(1);
+    display.setCursor(center_text("le impostazioni"), 12);
+    display.print("le impostazioni");
+    display.setCursor(center_text("di default"), 24);
+    display.print("di default");
+  }
+  else if(index == 4){
     display.drawBitmap(52, 8, undu, 24, 24, SSD1306_WHITE);
   }
   

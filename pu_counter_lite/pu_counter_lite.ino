@@ -8,6 +8,7 @@
 #define ADDR_MAX    2
 #define ADDR_MIN    4
 #define ADDR_PERC   6
+#define ADDR_MODE   7
 
 // Definizione display
 #define SCREEN_WIDTH 128
@@ -19,19 +20,20 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 #define DEF_SOGLIA_INGRESSO 450
 #define DEF_SOGLIA_MIN 130
 #define DEF_PERC 15
+#define DEF_MODE 0
 
 // Pin sensore ultrasonico
 #define TRIG_PIN 2
 #define ECHO_PIN 3
 
-#define MINUS_PIN 7
+#define MINUS_PIN 5
 #define PLUS_PIN 6
-#define PLAY_PIN 5
+#define PLAY_PIN 7
 
 #define BUZZER_PIN 4
 
 #define voci_menu 3
-#define voci_config 4
+#define voci_config 5
 
 #define CHECKBAT 0
 #define BATEN 1
@@ -41,11 +43,13 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 bool plotter = false;
 
 String titoli_menu[voci_menu] = {"Conta\npush-ups", "Impostazioni", "Debug"};
-String titoli_config[voci_config] = {"Limiti push-up", "Tolleranza misura", "Ripristina", "Menu iniziale"};
+String titoli_config[voci_config] = {"Limiti push-up", "Tolleranza misura", "Modalita' misura", "Ripristina", "Menu iniziale"};
 
 unsigned long counter = 0;
 unsigned long workout_time = 0;
 bool in_pausa = false;
+
+int modalita = 0;
 
 int debounce = 20;
 
@@ -82,17 +86,20 @@ void load_config_init() {
     soglia_ingresso = DEF_SOGLIA_INGRESSO;
     soglia_min = DEF_SOGLIA_MIN;
     perc = DEF_PERC;
+    modalita = DEF_MODE;
 
     EEPROM.write(ADDR_MARKER, 0x42); // marker
     EEPROM.put(ADDR_MAX,  (uint16_t)soglia_ingresso);
     EEPROM.put(ADDR_MIN,  (uint16_t)soglia_min);
     EEPROM.write(ADDR_PERC, (uint8_t)perc);
+    EEPROM.write(ADDR_MODE, (uint8_t)modalita);
     EEPROM.commit();
   } else {
     // leggo i valori salvati
     EEPROM.get(ADDR_MAX, soglia_ingresso);
     EEPROM.get(ADDR_MIN, soglia_min);
     perc = EEPROM.read(ADDR_PERC);
+    modalita = EEPROM.read(ADDR_MODE);
   }
 }
 
@@ -102,16 +109,19 @@ void load_config() {
   soglia_ingresso = DEF_SOGLIA_INGRESSO;
   soglia_min = DEF_SOGLIA_MIN;
   perc = DEF_PERC;
+  modalita = DEF_MODE;
 
    // scrivo in EEPROM con indirizzi coerenti
   EEPROM.put(ADDR_MAX, (uint16_t)soglia_ingresso);         // 2 byte
   EEPROM.put(ADDR_MIN, (uint16_t)soglia_min);              // 2 byte
   EEPROM.write(ADDR_PERC, (uint8_t)perc);                  // 1 byte
+  EEPROM.write(ADDR_MODE, (uint8_t)modalita);                  // 1 byte
   EEPROM.commit();
   // leggo i valori salvati
   EEPROM.get(ADDR_MAX, soglia_ingresso);
   EEPROM.get(ADDR_MIN, soglia_min);
   perc = EEPROM.read(ADDR_PERC);
+  modalita = EEPROM.read(ADDR_MODE);
 }
 
 
@@ -145,6 +155,8 @@ void setup() {
   Serial.print(", perc: ");
   Serial.print(perc);
   Serial.print("%");
+  Serial.print(", modalita: ");
+  Serial.print(modalita);
 
   int tmp_soglia_ingresso = soglia_ingresso - soglia_ingresso*perc/100;
   int tmp_soglia_min = soglia_min + soglia_min*perc/100;
@@ -188,7 +200,7 @@ String formatMillis(unsigned long ms) {
   return String(buffer);
 }
 
-void analisi_piegamento(int distance){
+void analisi_piegamento_mode_0(int distance){
   if(distance > 2 && distance < 1000){
       
       if(plotter) Serial.println(distance);
@@ -207,21 +219,52 @@ void analisi_piegamento(int distance){
       if(! plotter) Serial.print(tmp_soglia_min);
       if(distance > tmp_soglia_ingresso && stato_pushup < 2 ){
         stato_pushup = 0;
-        //if(buzzer){
-        //  ledcWriteTone(BUZZER_PIN, 2000); // Start the tone
-        //  timer = millis();
-        //}
       }
       else if(distance >= tmp_soglia_min && distance <= tmp_soglia_ingresso && stato_pushup == 0){
         stato_pushup = 1;
-        //if(buzzer){
-        //  ledcWriteTone(BUZZER_PIN, 2000); // Start the tone
-        //  timer = millis();
-        //}
       }
       else if(distance > 0 && distance <= tmp_soglia_min && stato_pushup == 1){
         stato_pushup = 2;
-          
+      }
+      else if(distance > tmp_soglia_ingresso && stato_pushup == 2){
+        stato_pushup = 3;
+      }
+      
+      if(! plotter) Serial.print("; Stato pushup: ");
+      if(! plotter) Serial.println(stato_pushup);
+    }
+  if(stato_pushup == 3){  //piegamento eseguito
+    stato_pushup = 0;
+    counter += 1;
+  }
+}
+
+void analisi_piegamento_mode_1(int distance){
+  if(distance > 2 && distance < 1000){
+      
+      if(plotter) Serial.println(distance);
+      else Serial.print(distance);
+
+      if(! plotter) Serial.print(" mm");
+      int tmp_soglia_min = soglia_min + soglia_min*perc/100;
+      int tmp_soglia_ingresso = tmp_soglia_min + 50;
+      
+      if(! plotter) Serial.print(" ^ ");
+      if(! plotter) Serial.print(soglia_ingresso);
+      if(! plotter) Serial.print("; ^% ");
+      if(! plotter) Serial.print(tmp_soglia_ingresso);
+      if(! plotter) Serial.print("; v ");
+      if(! plotter) Serial.print(soglia_min);
+      if(! plotter) Serial.print("; v% ");
+      if(! plotter) Serial.print(tmp_soglia_min);
+      if(distance > tmp_soglia_ingresso && stato_pushup < 2 ){
+        stato_pushup = 0;
+      }
+      else if(distance >= tmp_soglia_min && distance <= tmp_soglia_ingresso && stato_pushup == 0){
+        stato_pushup = 1;
+      }
+      else if(distance > 0 && distance <= tmp_soglia_min && stato_pushup == 1){
+        stato_pushup = 2;
       }
       else if(distance > tmp_soglia_ingresso && stato_pushup == 2){
         stato_pushup = 3;
@@ -247,14 +290,17 @@ long readUltrasonic() {
   digitalWrite(TRIG_PIN, LOW);
 
   // Leggi durata
-  durata = pulseInLong(ECHO_PIN, HIGH, 12000); // max 15ms
+  durata = pulseInLong(ECHO_PIN, HIGH, 15000); // max 15ms
   mm = durata / 5.8;
   return mm; // return the distance value
 }
 
 void workout(int distance){
   if(! in_pausa)
-    analisi_piegamento(distance);
+    if(modalita == 0)
+      analisi_piegamento_mode_0(distance);
+    else if(modalita == 1)
+      analisi_piegamento_mode_1(distance);
   
   if(state_machine_pu == 0){
     if(counter == 1 && start == 0){  //primo piegamento eseguito
@@ -604,12 +650,19 @@ void loop() {
     }
   
   }
-  else if(state_machine ==  voci_menu+2){  //stato config 2 -> Ripristina
+  else if(state_machine ==  voci_menu+2){  //stato config 2 -> modalita
+    modalita = (modalita * -1) +1;
+    EEPROM.write(ADDR_MODE, (uint8_t)modalita);
+    EEPROM.commit();
+    state_machine = 1;
+    j = 2;
+  }
+  else if(state_machine ==  voci_menu+3){  //stato config 3 -> Ripristina
     load_config();
     state_machine = 1;
     j = 0;
   }
-  else if(state_machine ==  voci_menu+3){  //stato config 3 -> undu
+  else if(state_machine ==  voci_menu+4){  //stato config 4 -> undu
     state_machine = -1;
     j = 0;
   }

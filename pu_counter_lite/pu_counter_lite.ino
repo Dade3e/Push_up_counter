@@ -131,21 +131,17 @@ void setup() {
   // Inizializza I2C con i pin di default ESP32-C3 (SDA=8, SCL=9)
   Wire.begin();
 
-  // Inizializza display
-  if (!display.begin(0x3C, true)) {
-    Serial.println("Display SH1106 non trovato!");
-    for (;;);
+   // Inizializza display
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // indirizzo tipico 0x3C
+    Serial.println("SSD1306 non trovato!");
+    while (true);
   }
 
   display.clearDisplay();
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
 
-   // Inizializza display
-  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // indirizzo tipico 0x3C
-    Serial.println("SSD1306 non trovato!");
-    while (true);
-  }
+  
 
   load_config_init();
   Serial.print(", soglia ingresso: ");
@@ -290,7 +286,7 @@ long readUltrasonic() {
   digitalWrite(TRIG_PIN, LOW);
 
   // Leggi durata
-  durata = pulseInLong(ECHO_PIN, HIGH, 15000); // max 15ms
+  durata = pulseInLong(ECHO_PIN, LOW, 15000); // max 15ms
   mm = durata / 5.8;
   return mm; // return the distance value
 }
@@ -320,6 +316,7 @@ void workout(int distance){
       state_machine_pu = 1;
       workout_time = millis() - start;
       old_millis = millis();
+      lampeggio = true;
       display_show();
       while(digitalRead(PLAY_PIN) == LOW){
         if(millis() - timer > 3000 ){
@@ -391,14 +388,14 @@ void workout(int distance){
 
 void loop() {
 
-  if(millis() - battery_timer > 600){
+  if(millis() - battery_timer > 60000){
     battery_timer = millis();
     BAT1;
     delay(10);
     int sensorValue = analogRead(CHECKBAT);
     BAT0;
 
-    battery_val = (sensorValue-2950) /60; //da 1 a 10
+    battery_val = (sensorValue-2950) /50; //da 1 a 10
   }
   
 

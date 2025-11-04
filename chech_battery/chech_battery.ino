@@ -20,7 +20,7 @@ void loop() {
   // print out the value you read:
   Serial.print(sensorValue);
   Serial.print(" ; tensione: ");
-  int tens = (sensorValue-2950) /60; //da 1 a 10
+  int tens = (sensorValue-2950) /50; //da 1 a 10
   Serial.println(tens);
   delay(100);  // delay in between reads for stability
 }

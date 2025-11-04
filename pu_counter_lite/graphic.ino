@@ -54,15 +54,21 @@ void init_menu(int index){
     long distance = readUltrasonic();
     display.setCursor(center_text(String(distance)), 11);
     display.print(String(distance));
-    if(battery_val < 2){
+    battery_timer = millis();
+    BAT1;
+    delay(10);
+    int sensorValue = analogRead(CHECKBAT);
+    BAT0;
+    battery_val = (sensorValue-2950) /50; //da 1 a 10
+    if(battery_val < 3){
       if(lampeggio){
           display.drawBitmap(100, 11, battery, 16, 8, SSD1306_WHITE);
-          display.fillRect(116-battery_val, 12, battery_val, 5, SSD1306_WHITE);
+          display.fillRect(115-battery_val, 12, battery_val, 5, SSD1306_WHITE);
       }
       lampeggio = !lampeggio;
     }else{
       display.drawBitmap(100, 11, battery, 16, 8, SSD1306_WHITE);
-      display.fillRect(116-battery_val, 12, battery_val, 5, SSD1306_WHITE);
+      display.fillRect(115-battery_val, 12, battery_val, 5, SSD1306_WHITE);
     }
   }
   
@@ -273,14 +279,14 @@ void display_show(){
   }
   
   //battery
-  if(battery_val < 2){
+  if(battery_val < 3){
      if(lampeggio){
         display.drawBitmap(112, 0, battery, 16, 8, SSD1306_WHITE);
-        display.fillRect(126-battery_val, 1, battery_val, 5, SSD1306_WHITE);
+        display.fillRect(127-battery_val, 1, battery_val, 5, SSD1306_WHITE);
      }
   }else{
     display.drawBitmap(112, 0, battery, 16, 8, SSD1306_WHITE);
-    display.fillRect(126-battery_val, 1, battery_val, 5, SSD1306_WHITE);
+    display.fillRect(127-battery_val, 1, battery_val, 5, SSD1306_WHITE);
   }
 
   lampeggio = !lampeggio;
